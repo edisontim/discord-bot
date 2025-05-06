@@ -7,7 +7,7 @@ use shuttle_runtime::SecretStore;
 use sqlx::prelude::FromRow;
 use starknet_crypto::Felt;
 
-use crate::events::ToDiscordMessage;
+use crate::events::SubscriptionEvent;
 
 pub enum DiscordMessageType {
     DirectMessage(u64),
@@ -26,7 +26,7 @@ pub enum DiscordMessage {
     },
 }
 pub struct Event {
-    pub event: Box<dyn ToDiscordMessage>,
+    pub event: Box<dyn SubscriptionEvent>,
     pub identifier: Felt,
 }
 
@@ -35,7 +35,6 @@ pub struct Config {
     pub discord_token: String,
     pub channel_id: NonZero<u64>,
     pub torii_url: String,
-    pub node_url: String,
     pub torii_relay_url: String,
     pub world_address: String,
 }
@@ -51,7 +50,6 @@ impl Config {
         )
         .ok_or_eyre("Failed to convert string to non zero")?;
         let torii_url = secret_store.get("TORII_URL").unwrap();
-        let node_url = secret_store.get("NODE_URL").unwrap();
         let torii_relay_url = secret_store.get("TORII_RELAY_URL").unwrap();
         let world_address = secret_store.get("WORLD_ADDRESS").unwrap();
 
@@ -59,7 +57,6 @@ impl Config {
             discord_token,
             channel_id,
             torii_url,
-            node_url,
             torii_relay_url,
             world_address,
         };

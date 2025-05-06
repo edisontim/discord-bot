@@ -6,7 +6,7 @@ use starknet_crypto::Felt;
 use tokio::sync::mpsc;
 use torii_grpc::types::{Clause, KeysClause, PatternMatching, Query};
 
-use crate::constants::{ETERNUM_URL, TICK_ARMIES_ID, WORLD_CONFIG_ID};
+use crate::constants::{ETERNUM_URL, WORLD_CONFIG_ID};
 use crate::types::{Config, DiscordMessage};
 
 pub struct TickSender<'a> {
@@ -22,7 +22,6 @@ impl<'a> TickSender<'a> {
     ) -> eyre::Result<Self> {
         let client = torii_client::client::Client::new(
             config.torii_url.clone(),
-            config.node_url.clone(),
             config.torii_relay_url.clone(),
             Felt::from_hex_unchecked(&config.world_address.clone()),
         )
@@ -38,34 +37,47 @@ impl<'a> TickSender<'a> {
     pub async fn run(&mut self) {
         let tick_interval_in_seconds = self
             .torii_client
-            .entities(Query {
-                clause: Some(Clause::Keys(KeysClause {
-                    keys: vec![
-                        Some(Felt::from_hex(WORLD_CONFIG_ID).unwrap()),
-                        Some(Felt::from_hex(TICK_ARMIES_ID).unwrap()),
-                    ],
-                    pattern_matching: PatternMatching::FixedLen,
-                    models: vec!["s0_eternum-TickConfig".to_string()],
-                })),
-                limit: 1,
-                offset: 0,
-                dont_include_hashed_keys: false,
-            })
+            .entities(
+                Query {
+                    clause: Some(Clause::Keys(KeysClause {
+                        keys: vec![Some(Felt::from_hex_unchecked(&WORLD_CONFIG_ID))],
+                        pattern_matching: PatternMatching::FixedLen,
+                        models: vec![],
+                    })),
+                    limit: 1,
+                    offset: 0,
+                    dont_include_hashed_keys: false,
+                    order_by: vec![],
+                    entity_models: vec!["s1_eternum-WorldConfig".to_string()],
+                    entity_updated_after: 0,
+                },
+                false,
+            )
             .await
             .expect("Failed to get tick interval in seconds");
 
         let entity = tick_interval_in_seconds
             .first()
             .expect("No tick interval in seconds found");
-
-        let tick_interval_in_seconds = entity
+        let world_config = entity
             .models
             .iter()
-            .find(|model| model.name == "s0_eternum-TickConfig")
+            .find(|model| model.name == "s1_eternum-WorldConfig");
+
+        let tick_config = world_config
             .expect("Tick interval in seconds not found")
             .children
             .iter()
-            .find(|child| child.name == "tick_interval_in_seconds")
+            .find(|child| child.name == "tick_config")
+            .expect("Tick config not found");
+
+        let tick_interval_in_seconds = tick_config
+            .ty
+            .as_struct()
+            .expect("Tick config is not a struct")
+            .children
+            .iter()
+            .find(|child| child.name == "armies_tick_in_seconds")
             .expect("Tick interval in seconds not found")
             .ty
             .as_primitive()

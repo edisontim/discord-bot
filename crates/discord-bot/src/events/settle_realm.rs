@@ -11,7 +11,7 @@ use crate::{
     utils::{felt_to_string, Position},
 };
 
-use super::{ToDiscordMessage, UNKNOWN_USER};
+use super::{Metadata, SubscriptionEvent, UNKNOWN_USER};
 
 #[derive(CairoSerde, Clone, Copy)]
 pub struct SettleRealm {
@@ -32,7 +32,7 @@ pub struct SettleRealm {
     pub timestamp: u64,
 }
 
-impl ToDiscordMessage for SettleRealm {
+impl SubscriptionEvent for SettleRealm {
     fn to_discord_message(&mut self, msg_type: DiscordMessageType) -> DiscordMessage {
         let footer = CreateEmbedFooter::new(ETERNUM_URL);
         let normalized_position = self.position.get_normalized();
@@ -67,4 +67,8 @@ impl ToDiscordMessage for SettleRealm {
     fn should_send_in_channel_if_no_user_found(&self) -> bool {
         true
     }
+}
+
+impl Metadata for SettleRealm {
+    const EVENT_NAME: &'static str = "s1_eternum-SettleRealmData";
 }
